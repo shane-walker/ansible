@@ -574,7 +574,7 @@ class StrategyBase:
 
             block_list = load_list_of_blocks(
                 data,
-                play=included_file._task._block._play,
+                play=included_file._task._parent._play,
                 parent_block=None,
                 task_include=included_file._task,
                 role=included_file._task._role,
@@ -592,7 +592,7 @@ class StrategyBase:
             # mark all of the hosts including this file as failed, send callbacks,
             # and increment the stats for this host
             for host in included_file._hosts:
-                tr = TaskResult(host=host, task=included_file._task, return_data=dict(failed=True, reason=to_unicode(e)))
+                tr = TaskResult(host=host.name, task=included_file._task._uuid, return_data=dict(failed=True, reason=to_unicode(e)))
                 iterator.mark_host_failed(host)
                 self._tqm._failed_hosts[host.name] = True
                 self._tqm._stats.increment('failures', host.name)
@@ -602,9 +602,9 @@ class StrategyBase:
         # set the vars for this task from those specified as params to the include
         for b in block_list:
             # first make a copy of the including task, so that each has a unique copy to modify
-            b._task_include = b._task_include.copy()
+            b._parent = b._parent.copy(exclude_tasks=True)
             # then we create a temporary set of vars to ensure the variable reference is unique
-            temp_vars = b._task_include.vars.copy()
+            temp_vars = b._parent.vars.copy()
             temp_vars.update(included_file._args.copy())
             # pop tags out of the include args, if they were specified there, and assign
             # them to the include. If the include already had tags specified, we raise an
@@ -613,12 +613,12 @@ class StrategyBase:
             if isinstance(tags, string_types):
                 tags = tags.split(',')
             if len(tags) > 0:
-                if len(b._task_include.tags) > 0:
+                if len(b._parent.tags) > 0:
                     raise AnsibleParserError("Include tasks should not specify tags in more than one way (both via args and directly on the task). Mixing tag specify styles is prohibited for whole import hierarchy, not only for single import statement",
                             obj=included_file._task._ds)
                 display.deprecated("You should not specify tags in the include parameters. All tags should be specified using the task-level option")
-                b._task_include.tags = tags
-            b._task_include.vars = temp_vars
+                b._parent.tags = tags
+            b._parent.vars = temp_vars
 
         # finally, send the callback and return the list of blocks loaded
         self._tqm.send_callback('v2_playbook_on_include', included_file)

@@ -392,6 +392,9 @@ class TaskExecutor:
         if context_validation_error is not None:
             raise context_validation_error
 
+        # FOR DEBUGGING
+        #self._task.dump_me()
+
         # if this task is a TaskInclude, we just return now with a success code so the
         # main thread can expand the task list for the given host
         if self._task.action == 'include':
